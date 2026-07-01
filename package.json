@@ -1,0 +1,25 @@
+{
+  "name": "ai-meeting-bot",
+  "version": "1.0.0",
+  "description": "This is an AI bot that emails me a detailed summary of virtual meetings that I may not be in a position to enter",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GObwocha/AI-Meeting-Bot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/GObwocha/AI-Meeting-Bot/issues"
+  },
+  "homepage": "https://github.com/GObwocha/AI-Meeting-Bot#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "puppeteer": "^25.3.0"
+  }
+}
