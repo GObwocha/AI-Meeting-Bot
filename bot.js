@@ -61,8 +61,26 @@ app.post('/join', async (req, res) => {
              * the collected transcript array back to your 
              * Google Apps Script Webhook.
              * ==========================================
-             */
-             
+             */ 
+            // Build the final payload to pass back to Google Apps Script
+            const payload = {
+                title: "University Lecture Session", // You can dynamically scrape this from the DOM later
+                transcript: transcript
+            };
+            
+            // Replace this string with your exact Web App URL from Step 3
+            const googleWebAppUrl = "https://script.google.com/macros/s/AKfycbzEqUpOHlLI7PnQHiRwdN017RAY2u1Cy6RcY_R8bWe3HR3WPADgHVWlj8ekgMzYcJAh2w/exec"
+            
+            console.log("Pushing transcript data directly to Google Apps Script...");
+            
+            fetch(googleWebAppUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(response => console.log("Payload routed successfully to script manager."))
+            .catch(err => console.error("Failed to route payload to script manager:", err));
+
         }, 3600000); // Keeps the bot in the call for 1 hour (3600000 ms)
 
     } catch (error) {
