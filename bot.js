@@ -6,7 +6,8 @@ app.use(express.json());
 
 app.post('/join', async (req, res) => {
     const meetingUrl = req.body.url;
-    
+    const meetingTitle = req.body.meetingTitle || "Automated Meeting Session";
+
     // Acknowledge the request immediately so Google Apps Script doesn't time out
     res.status(200).send({ status: 'Bot deployment initiated.' });
 
@@ -50,6 +51,40 @@ app.post('/join', async (req, res) => {
         
         let transcript = [];
 
+        // Monitor the DOM for new caption text appearing
+        page.on('domcontentloaded', async () => {
+             // 1. Expose a function so the browser can send text back to our Node server
+        await page.exposeFunction('captureCaption', (text) => {
+            // Only add the text if it's not a duplicate of the last line
+            if (text && text !== transcript[transcript.length - 1]) {
+                transcript.push(text);
+                console.log(`[Captured]: ${text}`);
+            }
+        });
+
+        // 2. Inject the observer into the Google Meet webpage
+        await page.evaluate(() => {
+            // Google Meet usually puts captions in a container with specific roles or aria-live attributes.
+            // We observe the whole body but filter for text changes.
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.addedNodes.length) {
+                        mutation.addedNodes.forEach((node) => {
+                            // Target span elements which usually contain the caption text in Meet
+                            if (node.nodeType === 1 && node.tagName === 'SPAN' && node.innerText) {
+                                // Send the text back to Node.js
+                                window.captureCaption(node.innerText.trim());
+                            }
+                        });
+                    }
+                });
+            });
+
+            // Start watching the page for new captions
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
+        });
+
         // 4. End of Meeting Lifecycle handler
         setTimeout(async () => {
             console.log("Meeting complete. Shutting down browser session...");
@@ -64,7 +99,7 @@ app.post('/join', async (req, res) => {
              */ 
             // Build the final payload to pass back to Google Apps Script
             const payload = {
-                title: "University Lecture Session", // You can dynamically scrape this from the DOM later
+                title: meetingTitle,
                 transcript: transcript
             };
             
