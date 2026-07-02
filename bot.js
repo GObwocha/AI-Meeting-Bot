@@ -48,7 +48,7 @@ app.post('/join', async (req, res) => {
             // await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
 
             await page.evaluate(() => {
-                const joinBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
+                const joinBtn = Array.from(document.querySelectorAll('span, [role="button"]')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
                 if (joinBtn) joinBtn.click();
             });
 
@@ -59,7 +59,7 @@ app.post('/join', async (req, res) => {
             await page.evaluate(() => {
                 // Meet usually has an aria-label containing "Turn on captions"
                 const ccBtn = Array.from(document.querySelectorAll('button')).find(b => 
-                    b.getAttribute('aria-label') && b.getAttribute('aria-label').toLowerCase().includes('turn on captions')
+                    b.getAttribute('aria-label') && b.getAttribute('aria-label').includes('Turn on captions')
                 );
                 if (ccBtn) ccBtn.click();
             });
