@@ -44,8 +44,8 @@ app.post('/join', async (req, res) => {
                 });
             } catch (e) {}
 
-            await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
-            await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+            // await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
+            // await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
 
             await page.evaluate(() => {
                 const joinBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
