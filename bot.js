@@ -19,11 +19,12 @@ app.post('/join', async (req, res) => {
             headless: true,
             executablePath: '/usr/bin/google-chrome', // Pointing to the newly installed official Chrome
             args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--use-fake-ui-for-media-stream',
-                '--disable-notifications'
-            ]
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage', // ADD THIS
+            '--use-fake-ui-for-media-stream',
+            '--disable-notifications'
+        ]
         });
         
         const page = await browser.newPage();
@@ -44,11 +45,13 @@ app.post('/join', async (req, res) => {
                 });
             } catch (e) {}
 
-            // await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
-            // await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+            await page.waitForSelector('input[aria-label="Your name"]', { timeout: 15000 });
+            await page.type('input[aria-label="Your name"]', "AI Meeting Bot");
 
+            // NOW click join
             await page.evaluate(() => {
-                const joinBtn = Array.from(document.querySelectorAll('span, [role="button"]')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
+                const joinBtn = Array.from(document.querySelectorAll('[role="button"]'))
+                    .find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
                 if (joinBtn) joinBtn.click();
             });
 
@@ -133,37 +136,26 @@ app.post('/join', async (req, res) => {
         let transcript = [];
 
         // Monitor the DOM for new caption text appearing
-        page.on('domcontentloaded', async () => {
-             // 1. Expose a function so the browser can send text back to our Node server
+        // 1. Expose the capture function FIRST
         await page.exposeFunction('captureCaption', (text) => {
-            // Only add the text if it's not a duplicate of the last line
             if (text && text !== transcript[transcript.length - 1]) {
                 transcript.push(text);
                 console.log(`[Captured]: ${text}`);
             }
         });
 
-        // 2. Inject the observer into the Google Meet webpage
+        // 2. Then inject the observer
         await page.evaluate(() => {
-            // Google Meet usually puts captions in a container with specific roles or aria-live attributes.
-            // We observe the whole body but filter for text changes.
             const observer = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
-                    if (mutation.addedNodes.length) {
-                        mutation.addedNodes.forEach((node) => {
-                            // Target span elements which usually contain the caption text in Meet
-                            if (node.nodeType === 1 && node.tagName === 'SPAN' && node.innerText) {
-                                // Send the text back to Node.js
-                                window.captureCaption(node.innerText.trim());
-                            }
-                        });
-                    }
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === 1 && node.tagName === 'SPAN' && node.innerText) {
+                            window.captureCaption(node.innerText.trim());
+                        }
+                    });
                 });
             });
-
-            // Start watching the page for new captions
             observer.observe(document.body, { childList: true, subtree: true });
-        });
         });
 
         // 4. End of Meeting Lifecycle handler
