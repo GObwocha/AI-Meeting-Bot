@@ -27,28 +27,108 @@ app.post('/join', async (req, res) => {
         });
         
         const page = await browser.newPage();
-        await page.goto(meetingUrl);
 
-        // 2. The Guest Join Flow (Google Meet Example)
-        // Wait for the name input text field to appear
-        await page.waitForSelector('input[type="text"]', { timeout: 15000 });
+        // ---------------------------------------------------------
+        // MULTI-PLATFORM ROUTING & CAPTION ACTIVATION
+        // ---------------------------------------------------------
         
-        // Type your name so the meeting displays your initials ("G")
-        await page.type('input[type="text"]', 'Geoffrey Obwocha');
+        if (meetingUrl.includes('meet.google.com')) {
+            console.log("Platform detected: Google Meet");
+            await page.goto(meetingUrl, { waitUntil: 'networkidle2' });
+
+            try {
+                await page.waitForSelector('button span:contains("Got it")', { timeout: 3000 });
+                await page.evaluate(() => {
+                    const dismiss = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Got it') || b.innerText.includes('Dismiss'));
+                    if (dismiss) dismiss.click();
+                });
+            } catch (e) {}
+
+            await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
+            await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+
+            await page.evaluate(() => {
+                const joinBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
+                if (joinBtn) joinBtn.click();
+            });
+
+            console.log("Waiting to enter the main Google Meet room...");
+            await new Promise(resolve => setTimeout(resolve, 12000)); // Wait 12 seconds for admission
+
+            console.log("Activating Google Meet Captions...");
+            await page.evaluate(() => {
+                // Meet usually has an aria-label containing "Turn on captions"
+                const ccBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                    b.getAttribute('aria-label') && b.getAttribute('aria-label').toLowerCase().includes('turn on captions')
+                );
+                if (ccBtn) ccBtn.click();
+            });
+
+        } else if (meetingUrl.includes('teams.microsoft.com')) {
+            console.log("Platform detected: Microsoft Teams");
+            await page.goto(meetingUrl, { waitUntil: 'networkidle2' });
+
+            try {
+                const webBtn = await page.waitForSelector('button[data-tid="joinOnWeb"]', { timeout: 10000 });
+                if (webBtn) await webBtn.click();
+            } catch (e) {}
+
+            await page.waitForSelector('input[id="username"], input[placeholder="Enter name"]', { timeout: 15000 });
+            await page.type('input[id="username"], input[placeholder="Enter name"]', "Geoffrey Obwocha");
+            
+            await page.click('button[data-tid="preauth-join-button"]');
+
+            console.log("Waiting to enter the main Teams room...");
+            await new Promise(resolve => setTimeout(resolve, 15000)); // Teams is heavy, wait 15 seconds
+
+            console.log("Activating Microsoft Teams Captions...");
+            await page.evaluate(() => {
+                // Teams hides captions under the "More" or "..." menu
+                const moreBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                    b.getAttribute('aria-label') && b.getAttribute('aria-label').toLowerCase().includes('more actions')
+                );
+                if (moreBtn) {
+                    moreBtn.click();
+                    // Wait a moment for the dropdown to render, then click live captions
+                    setTimeout(() => {
+                        const ccItem = Array.from(document.querySelectorAll('*')).find(el => 
+                            el.innerText && el.innerText.toLowerCase().includes('turn on live captions')
+                        );
+                        if (ccItem) ccItem.click();
+                    }, 2000);
+                }
+            });
+
+        } else if (meetingUrl.includes('zoom.us')) {
+            console.log("Platform detected: Zoom");
+            
+            const webClientUrl = meetingUrl.replace('/j/', '/wc/join/').replace('/my/', '/wc/join/');
+            await page.goto(webClientUrl, { waitUntil: 'networkidle2' });
+
+            await page.waitForSelector('input[id="inputname"], input[name="name"]', { timeout: 15000 });
+            await page.type('input[id="inputname"], input[name="name"]', "Geoffrey Obwocha");
+            
+            await page.click('button[id="joinBtn"]');
+
+            console.log("Waiting to enter the main Zoom room...");
+            await new Promise(resolve => setTimeout(resolve, 12000)); 
+
+            console.log("Activating Zoom Captions...");
+            await page.evaluate(() => {
+                // Zoom usually has a "Show Captions" or "Closed Caption" button
+                const ccBtn = Array.from(document.querySelectorAll('button')).find(b => 
+                    b.getAttribute('aria-label') && (b.getAttribute('aria-label').toLowerCase().includes('show captions') || b.getAttribute('aria-label').toLowerCase().includes('closed caption'))
+                );
+                if (ccBtn) ccBtn.click();
+            });
+
+        } else {
+            console.log("Unsupported meeting platform detected.");
+            await browser.close();
+            return res.status(400).send("Unsupported platform");
+        }
         
-        // Find and click the "Join" or "Ask to join" button dynamically
-        await page.evaluate(() => {
-            const buttons = Array.from(document.querySelectorAll('button'));
-            const joinButton = buttons.find(b => b.innerText.includes('Join') || b.innerText.includes('Ask to join'));
-            if (joinButton) joinButton.click();
-        });
-
-        console.log("Bot has requested entry. Waiting in the meeting room...");
-        // Keep the browser session alive for a 1-hour buffer period
-        await new Promise(r => setTimeout(r, 10000));
-
-        // 3. Turn on Captions (Pressing the 'c' key shortcut)
-        await page.keyboard.press('c');
+        // ---------------------------------------------------------
         
         let transcript = [];
 
