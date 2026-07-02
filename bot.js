@@ -16,12 +16,13 @@ app.post('/join', async (req, res) => {
         
         // 1. Launch the headless browser with Ubuntu-specific fixes
         const browser = await puppeteer.launch({
-            headless: true, // Runs completely in the background
+            headless: true,
+            executablePath: '/usr/bin/google-chrome', // Pointing to the newly installed official Chrome
             args: [
-                '--no-sandbox',                  // Required to run as root on a VPS
-                '--disable-setuid-sandbox',       // Security bypass needed for headless environments
-                '--use-fake-ui-for-media-stream', // Grants microphone/camera permissions automatically
-                '--disable-notifications'         // Prevents popup blocks
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--use-fake-ui-for-media-stream',
+                '--disable-notifications'
             ]
         });
         
