@@ -54,7 +54,7 @@ app.post('/join', async (req, res) => {
             // Take a picture the second we land on the page
             await page.screenshot({ path: 'debug-01-landing.png' });
 
-            try {
+             try {
                 console.log("Looking for the name input box...");
                 await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
                 await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
@@ -65,15 +65,35 @@ app.post('/join', async (req, res) => {
                 return res.status(500).send("Blocked by Google Security");
             }
 
+            // 📸 TAKE A SCREENSHOT RIGHT BEFORE CLICKING JOIN
+            await page.screenshot({ path: 'debug-pre-join.png' });
+
+            // HYPER-AGGRESSIVE CLICK METHOD
             await page.evaluate(() => {
-                const joinBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
-                if (joinBtn) joinBtn.click();
+                // Grab literally every element on the page
+                const allElements = Array.from(document.querySelectorAll('*'));
+                
+                // Find the innermost text element (no children) with the exact button text
+                const joinBtn = allElements.find(el => {
+                    const text = (el.innerText || el.textContent || '').trim().toLowerCase();
+                    return (text === 'ask to join' || text === 'join now') && el.children.length === 0;
+                });
+                
+                if (joinBtn) {
+                    joinBtn.click(); // Click the text
+                    // Fire a click on its wrapper parent just to be absolutely certain
+                    if (joinBtn.parentElement) joinBtn.parentElement.click(); 
+                }
             });
 
             console.log("Waiting to enter the main Google Meet room...");
             await new Promise(resolve => setTimeout(resolve, 12000)); // Wait 12 seconds for admission
 
+            // 📸 TAKE A SCREENSHOT AFTER JOINING TO SEE IF IT WORKED
+            await page.screenshot({ path: 'debug-post-join.png' });
+
             console.log("Activating Google Meet Captions...");
+
             await page.evaluate(() => {
                 // Meet usually has an aria-label containing "Turn on captions"
                 const ccBtn = Array.from(document.querySelectorAll('button')).find(b => 
