@@ -51,8 +51,19 @@ app.post('/join', async (req, res) => {
                 });
             } catch (e) {}
 
-            await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
-            await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+            // Take a picture the second we land on the page
+            await page.screenshot({ path: 'debug-01-landing.png' });
+
+            try {
+                console.log("Looking for the name input box...");
+                await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
+                await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+            } catch (err) {
+                console.log("Failed to find the name box! Taking a photo of the blockage...");
+                await page.screenshot({ path: 'debug-02-error-screen.png' });
+                await browser.close();
+                return res.status(500).send("Blocked by Google Security");
+            }
 
             await page.evaluate(() => {
                 const joinBtn = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Ask to join') || b.innerText.includes('Join now'));
