@@ -1,3 +1,4 @@
+const fs = require('fs').promises;
 const express = require('express');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -34,6 +35,18 @@ app.post('/join', async (req, res) => {
         });
         
         const page = await browser.newPage();
+
+        // --- COOKIE INJECTION ---
+        try {
+            console.log("Attempting to load Google authentication cookies...");
+            const cookiesString = await fs.readFile('/root/AI-Meeting-Bot/cookies.json', 'utf8');
+            const cookies = JSON.parse(cookiesString);
+            await page.setCookie(...cookies);
+            console.log("Cookies successfully injected! The bot is authenticated.");
+        } catch (err) {
+            console.log("Warning: No cookies.json found. Bot will attempt to join anonymously (which may fail).");
+        }
+        // ------------------------
 
         // ---------------------------------------------------------
         // MULTI-PLATFORM ROUTING & CAPTION ACTIVATION
