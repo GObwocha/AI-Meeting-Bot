@@ -1,5 +1,7 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
 const app = express();
 
 app.use(express.json());
@@ -15,15 +17,20 @@ app.post('/join', async (req, res) => {
         console.log(`Deploying bot to: ${meetingUrl}`);
         
         // 1. Launch the headless browser with Ubuntu-specific fixes
+        // 1. Launch the STEALTH headless browser
         const browser = await puppeteer.launch({
             headless: true,
-            executablePath: '/usr/bin/google-chrome', // Pointing to the newly installed official Chrome
+            executablePath: '/usr/bin/google-chrome', // Keeping the official Chrome!
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--use-fake-ui-for-media-stream',
-                '--disable-notifications'
-            ]
+                '--disable-notifications',
+                '--disable-blink-features=AutomationControlled', // Hides the "Chrome is being controlled by automated software" flag
+                '--start-maximized'
+            ],
+            defaultViewport: null, // Forces the browser to look like a real screen size
+            ignoreDefaultArgs: ['--enable-automation'] // Strips automation tags
         });
         
         const page = await browser.newPage();
