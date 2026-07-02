@@ -83,18 +83,57 @@ app.post('/join', async (req, res) => {
             await page.screenshot({ path: 'debug-03-ready-to-join.png' });
 
             // Click the Join button
-            console.log("Clicking the Join button...");
-            await page.evaluate(() => {
-                const elements = Array.from(document.querySelectorAll('span, button, [role="button"]'));
-                const joinBtn = elements.find(el => {
-                    const text = (el.innerText || el.textContent || '').trim().toLowerCase();
-                    return text === 'ask to join' || text === 'join now' || text === 'join';
-                });
-                if (joinBtn) joinBtn.click();
-            });
+            // Take a picture of the final lobby screen
+            await page.screenshot({ path: 'debug-03-ready-to-join.png' });
 
+            // 1. CLEAR OVERLAYS: Press 'Escape' to dismiss the "Microphone not found" popup
+            console.log("Dismissing any blocking popups...");
+            await page.keyboard.press('Escape');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Take a picture of the final lobby screen
+            await page.screenshot({ path: 'debug-03-ready-to-join.png' });
+
+            // 1. CLEAR OVERLAYS: Press 'Escape' to dismiss the "Microphone not found" popup
+            console.log("Dismissing any blocking popups...");
+            await page.keyboard.press('Escape');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // 2. AGGRESSIVE CLICK: Search for the exact button and log the result
+            console.log("Hunting for the Join button...");
+            const joinResult = await page.evaluate(() => {
+                const elements = Array.from(document.querySelectorAll('button, [role="button"]'));
+                
+                // Pass 1: Look for exact innerText match
+                for (let el of elements) {
+                    const text = (el.innerText || '').trim().toLowerCase();
+                    if (text === 'ask to join' || text === 'join now') {
+                        el.click();
+                        return "Pass 1 Success: Clicked exact match -> " + text;
+                    }
+                }
+                
+                // Pass 2: Look for partial match, but explicitly ignore "Other ways to join"
+                for (let el of elements) {
+                    const text = (el.textContent || '').trim().toLowerCase();
+                    if ((text.includes('ask to join') || text.includes('join now')) && !text.includes('other')) {
+                        el.click();
+                        return "Pass 2 Success: Clicked partial match -> " + text;
+                    }
+                }
+                
+                return "FAIL: Could not find any button matching 'Join' criteria.";
+            });
+            console.log("Join button action:", joinResult);
+
+            // 📸 NEW: Wait 2 seconds for the UI to transition, then take a photo
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            await page.screenshot({ path: 'debug-04-post-click.png' });
+            console.log("Saved post-click screenshot as debug-04-post-click.png");
+
+            // Adjusted wait time since we already waited 2 seconds above
             console.log("Waiting to enter the main Google Meet room...");
-            await new Promise(resolve => setTimeout(resolve, 12000)); 
+            await new Promise(resolve => setTimeout(resolve, 10000));
 
             console.log("Activating Google Meet Captions...");
             await page.evaluate(() => {
