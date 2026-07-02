@@ -197,7 +197,7 @@ app.post('/join', async (req, res) => {
             .then(response => console.log("Payload routed successfully to script manager."))
             .catch(err => console.error("Failed to route payload to script manager:", err));
 
-        }, 3600000); // Keeps the bot in the call for 1 hour (3600000 ms)
+        }, 120000); // Keeps the bot in the call for 1 hour (3600000 ms)
 
     } catch (error) {
         console.error("Bot execution encountered an error:", error);
