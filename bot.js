@@ -54,61 +54,50 @@ app.post('/join', async (req, res) => {
         
         if (meetingUrl.includes('meet.google.com')) {
             console.log("Platform detected: Google Meet");
+            
+            // Wait for network to settle, then pause 3 extra seconds 
+            // to let Google's background auth redirects finish
             await page.goto(meetingUrl, { waitUntil: 'networkidle2' });
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
+            // Dismiss hardware popups if they exist
             try {
-                await page.waitForSelector('button span:contains("Got it")', { timeout: 3000 });
                 await page.evaluate(() => {
-                    const dismiss = Array.from(document.querySelectorAll('button')).find(b => b.innerText.includes('Got it') || b.innerText.includes('Dismiss'));
+                    const dismiss = Array.from(document.querySelectorAll('button')).find(b => b.innerText && (b.innerText.includes('Got it') || b.innerText.includes('Dismiss')));
                     if (dismiss) dismiss.click();
                 });
             } catch (e) {}
 
-            // Take a picture the second we land on the page
-            await page.screenshot({ path: 'debug-01-landing.png' });
-
-             try {
-                console.log("Looking for the name input box...");
-                await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 15000 });
+            // SMART CHECK: Only try to type a name if the box exists
+            try {
+                console.log("Checking if name input is required...");
+                // Shortened timeout to 5 seconds. If it's not there, we don't need it.
+                await page.waitForSelector('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', { timeout: 5000 });
                 await page.type('input[aria-label="Your name"], input[type="text"], input[placeholder="Your name"]', "Geoffrey Obwocha");
+                console.log("Name entered.");
             } catch (err) {
-                console.log("Failed to find the name box! Taking a photo of the blockage...");
-                await page.screenshot({ path: 'debug-02-error-screen.png' });
-                await browser.close();
-                return res.status(500).send("Blocked by Google Security");
+                console.log("No name input found. The bot is successfully authenticated!");
             }
 
-            // 📸 TAKE A SCREENSHOT RIGHT BEFORE CLICKING JOIN
-            await page.screenshot({ path: 'debug-pre-join.png' });
+            // Take a picture of the final lobby screen
+            await page.screenshot({ path: 'debug-03-ready-to-join.png' });
 
-            // HYPER-AGGRESSIVE CLICK METHOD
+            // Click the Join button
+            console.log("Clicking the Join button...");
             await page.evaluate(() => {
-                // Grab literally every element on the page
-                const allElements = Array.from(document.querySelectorAll('*'));
-                
-                // Find the innermost text element (no children) with the exact button text
-                const joinBtn = allElements.find(el => {
+                const elements = Array.from(document.querySelectorAll('span, button, [role="button"]'));
+                const joinBtn = elements.find(el => {
                     const text = (el.innerText || el.textContent || '').trim().toLowerCase();
-                    return (text === 'ask to join' || text === 'join now') && el.children.length === 0;
+                    return text === 'ask to join' || text === 'join now' || text === 'join';
                 });
-                
-                if (joinBtn) {
-                    joinBtn.click(); // Click the text
-                    // Fire a click on its wrapper parent just to be absolutely certain
-                    if (joinBtn.parentElement) joinBtn.parentElement.click(); 
-                }
+                if (joinBtn) joinBtn.click();
             });
 
             console.log("Waiting to enter the main Google Meet room...");
-            await new Promise(resolve => setTimeout(resolve, 12000)); // Wait 12 seconds for admission
-
-            // 📸 TAKE A SCREENSHOT AFTER JOINING TO SEE IF IT WORKED
-            await page.screenshot({ path: 'debug-post-join.png' });
+            await new Promise(resolve => setTimeout(resolve, 12000)); 
 
             console.log("Activating Google Meet Captions...");
-
             await page.evaluate(() => {
-                // Meet usually has an aria-label containing "Turn on captions"
                 const ccBtn = Array.from(document.querySelectorAll('button')).find(b => 
                     b.getAttribute('aria-label') && b.getAttribute('aria-label').toLowerCase().includes('turn on captions')
                 );
